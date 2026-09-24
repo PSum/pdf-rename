@@ -1,7 +1,8 @@
 import './style.css'
 import { baseName, stripPdf } from '@shared/filename'
 import type { ExpandResult } from '@shared/types'
-import { actionFor, type Action } from './keys'
+import { isMac, launchPaths, onFiles, openPaths, pickFiles, readFile, rename } from './api'
+import { actionFor, isBrowserShortcut, type Action } from './keys'
 import { createPreview } from './preview'
 import { Session } from './session'
 import logoUrl from '../../../build/icon.svg?url'
@@ -13,11 +14,11 @@ const dropzone = $('dropzone')
 const input = $<HTMLInputElement>('name')
 const field = input.parentElement!
 const msg = $('msg')
-const preview = createPreview($('preview'), window.api.readFile)
+const preview = createPreview($('preview'), readFile)
 
 $<HTMLImageElement>('logo').src = logoUrl
 
-const mac = window.api.platform === 'darwin'
+const mac = isMac
 document.querySelectorAll('kbd.mod').forEach((k) => (k.textContent = mac ? '⌘' : 'Ctrl'))
 document.querySelectorAll('kbd.alt').forEach((k) => (k.textContent = mac ? '⌥' : 'Alt'))
 document.querySelectorAll('kbd.nav').forEach((k) => (k.textContent = mac ? '⌘+⌥' : 'Alt'))
@@ -68,7 +69,7 @@ function start(result: ExpandResult): void {
   const ignored = result.ignored ? `${result.ignored} non-PDF item(s) ignored` : ''
   $('drop-msg').textContent = result.files.length ? '' : ignored && `No PDFs found (${ignored})`
   if (!result.files.length) return
-  session = new Session(result.files, window.api.rename)
+  session = new Session(result.files, rename)
   render()
   if (ignored) {
     msg.textContent = `${result.files.length} PDF(s) loaded, ${ignored}`
@@ -76,32 +77,29 @@ function start(result: ExpandResult): void {
   }
 }
 
-dropzone.addEventListener('click', async () => start(await window.api.openDialog()))
+dropzone.addEventListener('click', async () => start(await pickFiles()))
 dropzone.addEventListener('keydown', async (e) => {
-  if (e.key === 'Enter' || e.key === ' ') start(await window.api.openDialog())
+  if (e.key === 'Enter' || e.key === ' ') start(await pickFiles())
 })
 
 // Always prevent the default so a stray drop never navigates the window.
 // While renaming, dropped PDFs are appended to the batch; otherwise they start a new one.
-document.addEventListener('dragover', (e) => {
-  e.preventDefault()
-  document.body.classList.add('dragging')
-})
-document.addEventListener('dragleave', (e) => {
-  if (!e.relatedTarget) document.body.classList.remove('dragging')
-})
-document.addEventListener('drop', async (e) => {
-  e.preventDefault()
-  document.body.classList.remove('dragging')
-  if (!e.dataTransfer) return
-  const paths = [...e.dataTransfer.files].map((f) => window.api.pathForFile(f)).filter(Boolean)
-  const result = await window.api.expandPaths(paths)
+async function openDropped(paths: string[]): Promise<void> {
+  const result = await openPaths(paths)
   if (session?.state.screen === 'rename') {
     session.add(result.files)
     render()
   } else {
     start(result)
   }
+}
+
+onFiles({
+  hover: (active) => document.body.classList.toggle('dragging', active),
+  drop: openDropped
+})
+launchPaths().then((paths) => {
+  if (paths.length) openDropped(paths)
 })
 
 // ------------------------------------------------------------------ keyboard
@@ -145,6 +143,10 @@ function perform(s: Session, action: Action): void | Promise<void> {
 }
 
 document.addEventListener('keydown', async (e) => {
+  if (isBrowserShortcut(e, mac)) {
+    e.preventDefault()
+    return
+  }
   if (!session) return
   const action = actionFor(e, mac)
 
@@ -188,6 +190,10 @@ $('preview').addEventListener('mousedown', (e) => {
 $('panel').addEventListener('mousedown', (e) => {
   const t = e.target as HTMLElement
   if (t !== input && !t.closest('.current')) e.preventDefault()
+})
+// No browser context menu (reload, inspect, …) except for cut/copy/paste in the name field.
+document.addEventListener('contextmenu', (e) => {
+  if (e.target !== input) e.preventDefault()
 })
 window.addEventListener('focus', () => {
   if (session?.state.screen === 'rename') input.focus()

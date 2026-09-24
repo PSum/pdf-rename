@@ -1,0 +1,33 @@
+[package]
+name = "pdf-rename"
+# The released version comes from package.json (see tauri.conf.json), not from here.
+version = "0.0.0"
+description = "Keyboard-driven batch PDF renamer"
+authors = ["Philipp Sum"]
+license = "MIT"
+edition = "2024"
+rust-version = "1.88"
+
+[lib]
+name = "pdf_rename_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-window-state = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
+tauri-plugin-single-instance = "2"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

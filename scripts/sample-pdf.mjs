@@ -1,4 +1,4 @@
-// Tiny PDF writer for tests and screenshots: one A4 page of Helvetica text and filled boxes.
+// Tiny PDF writer for tests: one A4 page of Helvetica text and filled boxes.
 
 /**
  * @param {Array<{text?: string, x: number, y: number, size?: number, bold?: boolean,
@@ -35,37 +35,3 @@ export function pdfPage(items) {
 
 /** A one-line page showing `text` big, used by the e2e test. */
 export const labelPdf = (text) => pdfPage([{ text, x: 60, y: 700, size: 36 }])
-
-/** A realistic-looking invoice for screenshots. */
-export function invoicePdf({ company, number, date, items }) {
-  const accent = [0.78, 0.2, 0.15]
-  const grey = [0.45, 0.45, 0.5]
-  const rows = items.flatMap(([desc, qty, price], i) => {
-    const y = 470 - i * 28
-    return [
-      { text: desc, x: 60, y },
-      { text: String(qty), x: 380, y },
-      { text: `${price.toFixed(2)} EUR`, x: 470, y }
-    ]
-  })
-  const total = items.reduce((s, [, q, p]) => s + q * p, 0)
-  const last = 470 - items.length * 28
-  return pdfPage([
-    { x: 0, y: 812, w: 595, h: 30, color: accent },
-    { text: company, x: 60, y: 760, size: 20, bold: true },
-    { text: 'Hauptstrasse 12, 10115 Berlin, Germany', x: 60, y: 740, size: 10, color: grey },
-    { text: 'INVOICE', x: 60, y: 660, size: 30, bold: true, color: accent },
-    { text: `Invoice no. ${number}`, x: 60, y: 630, size: 11 },
-    { text: `Date: ${date}`, x: 60, y: 614, size: 11 },
-    { text: 'Bill to: Philipp Sum', x: 360, y: 630, size: 11 },
-    { x: 60, y: 505, w: 475, h: 24, color: [0.95, 0.93, 0.93] },
-    { text: 'Description', x: 68, y: 513, size: 10, bold: true },
-    { text: 'Qty', x: 380, y: 513, size: 10, bold: true },
-    { text: 'Price', x: 470, y: 513, size: 10, bold: true },
-    ...rows,
-    { x: 60, y: last - 4, w: 475, h: 1, color: grey },
-    { text: 'Total', x: 380, y: last - 26, size: 12, bold: true },
-    { text: `${total.toFixed(2)} EUR`, x: 470, y: last - 26, size: 12, bold: true },
-    { text: 'Payable within 14 days. Thank you for your business!', x: 60, y: 120, size: 10, color: grey }
-  ])
-}

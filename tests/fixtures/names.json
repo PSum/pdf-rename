@@ -1,0 +1,137 @@
+{
+  "_comment": "Shared by tests/filename.test.ts and src-tauri/src/names.rs: both implementations must agree. `error` is a substring of the message, or null for valid names.",
+  "cases": [
+    {
+      "input": "Invoice 2026-09",
+      "error": null
+    },
+    {
+      "input": "Rechnung_Müller",
+      "error": null
+    },
+    {
+      "input": "a.b.c",
+      "error": null
+    },
+    {
+      "input": "  leading space",
+      "error": null
+    },
+    {
+      "input": "日本語",
+      "error": null
+    },
+    {
+      "input": "console",
+      "error": null
+    },
+    {
+      "input": "ok.pdf",
+      "error": null
+    },
+    {
+      "input": "ok.PDF",
+      "error": null
+    },
+    {
+      "input": "",
+      "error": "empty"
+    },
+    {
+      "input": "   ",
+      "error": "empty"
+    },
+    {
+      "input": ".pdf",
+      "error": "empty"
+    },
+    {
+      "input": "a/b",
+      "error": "Not allowed"
+    },
+    {
+      "input": "a\\b",
+      "error": "Not allowed"
+    },
+    {
+      "input": "a:b",
+      "error": "Not allowed"
+    },
+    {
+      "input": "a*b",
+      "error": "Not allowed"
+    },
+    {
+      "input": "a?b",
+      "error": "Not allowed"
+    },
+    {
+      "input": "a\"b",
+      "error": "Not allowed"
+    },
+    {
+      "input": "a<b",
+      "error": "Not allowed"
+    },
+    {
+      "input": "a>b",
+      "error": "Not allowed"
+    },
+    {
+      "input": "a|b",
+      "error": "Not allowed"
+    },
+    {
+      "input": "a\u0001b",
+      "error": "Not allowed"
+    },
+    {
+      "input": "bad:.pdf",
+      "error": "Not allowed"
+    },
+    {
+      "input": "name.",
+      "error": "dot or space"
+    },
+    {
+      "input": "name ",
+      "error": "dot or space"
+    },
+    {
+      "input": "CON",
+      "error": "reserved"
+    },
+    {
+      "input": "nul",
+      "error": "reserved"
+    },
+    {
+      "input": "com1.backup",
+      "error": "reserved"
+    },
+    {
+      "input": "LPT9",
+      "error": "reserved"
+    },
+    {
+      "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "error": null
+    },
+    {
+      "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "error": "too long"
+    },
+    {
+      "input": "üüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüü",
+      "error": "too long"
+    }
+  ],
+  "sort": [
+    "Scan1",
+    "scan2",
+    "scan10",
+    "scan10a",
+    "Scan11",
+    "z"
+  ]
+}

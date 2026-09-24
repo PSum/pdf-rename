@@ -65,9 +65,7 @@ export function createPreview(
         iccUrl: ASSETS + 'iccs/'
       }).promise
     } catch (e) {
-      // Errors from main arrive as "Error invoking remote method 'x': Error: <text>".
-      const text = (e as Error).message.replace(/^Error invoking remote method '[^']*': (Error: )?/, '')
-      if (!stale()) message(`Could not display ${baseName(path)}\n${text}`)
+      if (!stale()) message(`Could not display ${baseName(path)}\n${(e as Error).message}`)
       return
     }
     if (stale()) {

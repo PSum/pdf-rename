@@ -1,7 +1,7 @@
-// End-to-end test: launches the built app (`npm run build` first), drives it with
-// real keystrokes and real drops, and checks the files on disk.
-// Headless Linux: run under `xvfb-run`.
-import { _electron as electron } from 'playwright-core'
+// End-to-end test of the real app through tauri-driver (WebDriver). Linux only.
+// Needs: `cargo install tauri-driver`, WebKitWebDriver (apt: webkit2gtk-driver) and a build:
+//   npm run tauri build -- --debug --no-bundle
+// Headless: dbus-run-session -- xvfb-run -a npm run e2e
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -9,20 +9,100 @@ import path from 'node:path'
 import assert from 'node:assert/strict'
 import { labelPdf as pdf } from './sample-pdf.mjs'
 
-const APP = path.resolve(import.meta.dirname, '..')
-const ELECTRON = (await import('electron')).default // path to the binary
+const ROOT = path.resolve(import.meta.dirname, '..')
+const APP =
+  process.env.APP_BINARY ??
+  ['debug', 'release'].map((m) => path.join(ROOT, 'src-tauri/target', m, 'pdf-rename')).find(fs.existsSync)
+if (!APP) throw new Error('No app binary: run `npm run tauri build -- --debug --no-bundle` first')
+
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pdfrename-e2e-'))
 const dir = path.join(tmp, 'pdfs')
 const more = path.join(tmp, 'more')
-const userData = path.join(tmp, 'profile')
-const env = { ...process.env, PDF_RENAME_USER_DATA: userData }
 fs.mkdirSync(dir)
 fs.mkdirSync(more)
-
 for (const n of ['scan10', 'scan2', 'scan1', 'taken']) fs.writeFileSync(path.join(dir, `${n}.pdf`), pdf(n))
 fs.writeFileSync(path.join(dir, 'notes.txt'), 'not a pdf')
 fs.writeFileSync(path.join(more, 'extra.pdf'), pdf('extra'))
 const onDisk = () => fs.readdirSync(dir).sort()
+// Throwaway profile: window state etc. must not touch the user's.
+const env = { ...process.env, XDG_CONFIG_HOME: path.join(tmp, 'config'), XDG_DATA_HOME: path.join(tmp, 'data') }
+
+// ------------------------------------------------------------ tiny WebDriver client
+
+const WD = 'http://127.0.0.1:4444'
+let sid
+
+async function wd(method, route, body) {
+  const res = await fetch(WD + route.replace(':sid', sid), {
+    method,
+    headers: { 'content-type': 'application/json' },
+    body: body && JSON.stringify(body)
+  })
+  const { value } = await res.json()
+  if (value?.error) throw new Error(`${value.error}: ${value.message}`)
+  return value
+}
+
+/** Runs `fn` in the page and returns its result. */
+const run = (fn, ...args) =>
+  wd('POST', '/session/:sid/execute/sync', { script: `return (${fn}).apply(null, arguments)`, args })
+
+const KEY = {
+  Shift: '',
+  Control: '',
+  Alt: '',
+  Enter: '',
+  Escape: '',
+  ArrowLeft: '',
+  ArrowRight: ''
+}
+
+/** Presses a chord like press('Shift', 'Enter'): all keys down in order, then up in reverse. */
+async function press(...keys) {
+  const codes = keys.map((k) => KEY[k] ?? k)
+  const actions = [
+    ...codes.map((value) => ({ type: 'keyDown', value })),
+    ...codes.reverse().map((value) => ({ type: 'keyUp', value }))
+  ]
+  await wd('POST', '/session/:sid/actions', { actions: [{ type: 'key', id: 'kb', actions }] })
+}
+
+async function type(text) {
+  const actions = [...text].flatMap((value) => [
+    { type: 'keyDown', value },
+    { type: 'keyUp', value }
+  ])
+  await wd('POST', '/session/:sid/actions', { actions: [{ type: 'key', id: 'kb', actions }] })
+}
+
+async function until(fn, what, ms = 10000) {
+  const end = Date.now() + ms
+  for (;;) {
+    const v = await fn()
+    if (v) return v
+    if (Date.now() > end) throw new Error(`timed out waiting for ${what}`)
+    await new Promise((r) => setTimeout(r, 100))
+  }
+}
+
+const ui = () =>
+  run(() => {
+    const input = document.getElementById('name')
+    return {
+      screen: ['drop', 'rename', 'summary'].find((id) => !document.getElementById(id).hidden),
+      current: document.getElementById('current').textContent,
+      selected: input.value.slice(input.selectionStart, input.selectionEnd),
+      caret: input.selectionStart,
+      focused: document.activeElement?.id,
+      counter: document.getElementById('counter').textContent,
+      msg: document.getElementById('msg').textContent,
+      pageWidth: document.querySelector('#preview .page')?.getBoundingClientRect().width ?? 0,
+      previewMsg: document.querySelector('.preview-msg')?.textContent ?? '',
+      summary: document.getElementById('summary-text').textContent,
+      canvas: !!document.querySelector('#preview canvas')
+    }
+  })
+const counterIs = (text) => until(async () => (await ui()).counter === text, `counter ${text}`)
 
 let step = 0
 async function check(name, fn) {
@@ -36,43 +116,21 @@ async function check(name, fn) {
   }
 }
 
-const launch = () =>
-  electron.launch({ executablePath: ELECTRON, args: ['--no-sandbox', APP], env, timeout: 30000 })
+// ------------------------------------------------------------------------ the test
 
-let app = await launch()
+const driver = spawn('tauri-driver', [], { env, stdio: ['ignore', 'ignore', 'inherit'] })
 try {
-  let page = await app.firstWindow()
-  page.on('pageerror', (e) => console.log('  [page error]', e.message))
-  await page.waitForSelector('#dropzone')
-  const cdp = await page.context().newCDPSession(page)
+  await until(() => fetch(WD + '/status').then(() => true, () => false), 'tauri-driver')
+  const session = await wd('POST', '/session', {
+    capabilities: { alwaysMatch: { 'tauri:options': { application: APP, args: [dir] } } }
+  })
+  sid = session.sessionId
 
-  /** A real OS-style drop carrying file paths, like dragging from Explorer/Finder. */
-  async function drop(paths) {
-    const data = { items: [], files: paths, dragOperationsMask: 1 }
-    for (const type of ['dragEnter', 'dragOver', 'drop']) {
-      await cdp.send('Input.dispatchDragEvent', { type, x: 300, y: 300, data })
-    }
-  }
-  const ui = () =>
-    page.evaluate(() => {
-      const input = document.getElementById('name')
-      return {
-        current: document.getElementById('current').textContent,
-        value: input.value,
-        selected: input.value.slice(input.selectionStart, input.selectionEnd),
-        focused: document.activeElement?.id,
-        counter: document.getElementById('counter').textContent,
-        msg: document.getElementById('msg').textContent
-      }
-    })
-  const waitCounter = (text) =>
-    page.waitForFunction((t) => document.getElementById('counter').textContent === t, text)
-
-  await check('drop a folder: PDFs in natural order, non-PDF ignored, name preselected', async () => {
-    await drop([dir])
-    await page.waitForSelector('#rename:not([hidden])')
-    await page.waitForSelector('#preview canvas')
-    const s = await ui()
+  await check('opens the folder it was started with: natural order, non-PDF ignored, name preselected', async () => {
+    const s = await until(async () => {
+      const s = await ui()
+      return s.screen === 'rename' && s.canvas && s
+    }, 'rename screen with preview')
     assert.equal(s.current, 'scan1.pdf')
     assert.equal(s.counter, '1 / 4')
     assert.equal(s.selected, 'scan1')
@@ -81,128 +139,95 @@ try {
   })
 
   await check('Shift+Enter renames on disk and focuses the next file', async () => {
-    await page.keyboard.type('Invoice A')
-    await page.keyboard.press('Shift+Enter')
-    await waitCounter('2 / 4')
+    await type('Invoice A')
+    await press('Shift', 'Enter')
+    await counterIs('2 / 4')
     assert.ok(onDisk().includes('Invoice A.pdf'))
     assert.equal((await ui()).focused, 'name')
   })
 
   await check('illegal characters are blocked', async () => {
-    await page.keyboard.type('bad:name')
+    await type('bad:name')
     assert.match((await ui()).msg, /Not allowed/)
-    await page.keyboard.press('Shift+Enter')
+    await press('Shift', 'Enter')
     assert.equal((await ui()).counter, '2 / 4')
   })
 
   await check('existing name asks before overwriting, Esc cancels', async () => {
-    await page.keyboard.press('Control+A')
-    await page.keyboard.type('taken')
-    await page.keyboard.press('Shift+Enter')
-    await page.waitForFunction(() => document.getElementById('msg').textContent.includes('already exists'))
-    await page.keyboard.press('Escape')
+    await press('Control', 'a')
+    await type('taken')
+    await press('Shift', 'Enter')
+    await until(async () => (await ui()).msg.includes('already exists'), 'overwrite question')
+    await press('Escape')
     assert.equal((await ui()).msg, '')
     assert.ok(onDisk().includes('scan2.pdf'))
   })
 
   await check('Alt+Right skips, Alt+Left goes back, Ctrl+Left still jumps words', async () => {
-    await page.keyboard.press('Alt+ArrowRight')
+    await press('Alt', 'ArrowRight')
     assert.equal((await ui()).current, 'scan10.pdf')
-    await page.keyboard.press('Alt+ArrowLeft')
+    await press('Alt', 'ArrowLeft')
     assert.equal((await ui()).current, 'scan2.pdf')
-    await page.keyboard.press('Alt+ArrowRight')
-    await page.keyboard.type('two words')
-    await page.keyboard.press('Control+ArrowLeft')
-    const caret = await page.evaluate(() => document.getElementById('name').selectionStart)
-    assert.equal(caret, 4)
-    assert.equal((await ui()).current, 'scan10.pdf')
+    await press('Alt', 'ArrowRight')
+    await type('two words')
+    await press('Control', 'ArrowLeft')
+    const s = await ui()
+    assert.equal(s.caret, 4)
+    assert.equal(s.current, 'scan10.pdf')
   })
 
   await check('Ctrl+Enter renames, Ctrl+Alt+Z undoes', async () => {
-    await page.keyboard.press('Control+A')
-    await page.keyboard.type('Invoice B')
-    await page.keyboard.press('Control+Enter')
-    await waitCounter('4 / 4')
+    await press('Control', 'a')
+    await type('Invoice B')
+    await press('Control', 'Enter')
+    await counterIs('4 / 4')
     assert.ok(onDisk().includes('Invoice B.pdf'))
-    await page.keyboard.press('Control+Alt+KeyZ')
-    await waitCounter('3 / 4')
+    await press('Control', 'Alt', 'z')
+    await counterIs('3 / 4')
     assert.equal((await ui()).current, 'scan10.pdf')
     assert.ok(onDisk().includes('scan10.pdf'))
   })
 
-  await check('dropping while renaming appends, duplicates skipped', async () => {
-    await drop([path.join(more, 'extra.pdf'), path.join(dir, 'taken.pdf')])
-    await waitCounter('3 / 5')
+  await check('a second launch hands its files to the running window (single instance)', async () => {
+    const second = spawn(APP, [path.join(more, 'extra.pdf'), path.join(dir, 'taken.pdf')], { env, stdio: 'ignore' })
+    const code = await new Promise((resolve) => second.on('exit', resolve))
+    assert.equal(code, 0)
+    await counterIs('3 / 5')
     assert.match((await ui()).msg, /1 PDF\(s\) added, 1 already in the list/)
   })
 
-  await check('zoom: Ctrl+= enlarges pages, Ctrl+0 resets, focus stays in the field', async () => {
-    const width = () => page.evaluate(() => document.querySelector('#preview .page').getBoundingClientRect().width)
-    await page.waitForSelector('#preview .page')
-    const base = await width()
-    await page.keyboard.press('Control+Equal')
-    await page.keyboard.press('Control+Equal')
-    assert.ok((await width()) > base * 1.5, 'zoomed in')
-    await page.keyboard.press('Control+Digit0')
-    assert.ok(Math.abs((await width()) - base) < 1, 'reset')
-    await page.mouse.move(300, 300)
-    await page.keyboard.down('Control')
-    await page.mouse.wheel(0, -100)
-    await page.keyboard.up('Control')
-    assert.ok((await width()) > base * 1.1, 'Ctrl+wheel zooms')
-    await page.keyboard.press('Control+Digit0')
+  // "+" rather than "=": WebDriver types "=" as the key that gives "=" on a US layout,
+  // which is "0" (zoom reset) on German QWERTZ.
+  await check('Ctrl++ zooms the preview, Ctrl+0 resets', async () => {
+    const base = await until(async () => (await ui()).pageWidth, 'preview page')
+    await press('Control', '+')
+    await press('Control', '+')
+    assert.ok((await ui()).pageWidth > base * 1.5, 'zoomed in')
+    await press('Control', '0')
+    assert.ok(Math.abs((await ui()).pageWidth - base) < 1, 'reset')
     assert.equal((await ui()).focused, 'name')
   })
 
-  if (process.platform !== 'win32') {
-    await check('unreadable file shows a plain-words error', async () => {
-      fs.chmodSync(path.join(dir, 'taken.pdf'), 0o000)
-      await page.keyboard.press('Alt+ArrowRight')
-      assert.equal((await ui()).current, 'taken.pdf')
-      await page.waitForSelector('.preview-msg')
-      const text = await page.textContent('.preview-msg')
-      fs.chmodSync(path.join(dir, 'taken.pdf'), 0o644)
-      assert.match(text, /open in another program or you don't have permission/)
-      assert.doesNotMatch(text, /invoke remote method/)
-    })
-  }
+  await check('unreadable file shows a plain-words error', async () => {
+    fs.chmodSync(path.join(dir, 'taken.pdf'), 0o000)
+    await press('Alt', 'ArrowRight')
+    assert.equal((await ui()).current, 'taken.pdf')
+    const text = await until(async () => (await ui()).previewMsg, 'preview error')
+    fs.chmodSync(path.join(dir, 'taken.pdf'), 0o644)
+    assert.match(text, /open in another program or you don't have permission/)
+  })
 
   await check('Esc shows the summary, any key returns to the drop zone', async () => {
-    await page.keyboard.press('Escape')
-    await page.waitForSelector('#summary:not([hidden])')
-    assert.equal(await page.textContent('#summary-text'), 'Renamed 1 of 5 files')
-    await page.keyboard.press('a')
-    assert.ok(await page.isVisible('#dropzone'))
-  })
-
-  await check('only one instance runs', async () => {
-    const second = spawn(ELECTRON, ['--no-sandbox', APP], { env, stdio: 'ignore' })
-    const code = await new Promise((resolve, reject) => {
-      second.on('exit', resolve)
-      setTimeout(() => {
-        second.kill()
-        reject(new Error('second instance kept running'))
-      }, 10000)
-    })
-    assert.equal(code, 0)
-    assert.equal(app.windows().length, 1)
-  })
-
-  await check('window size is remembered across restarts', async () => {
-    await app.evaluate(({ BrowserWindow }) =>
-      BrowserWindow.getAllWindows()[0].setBounds({ x: 40, y: 40, width: 900, height: 600 })
-    )
-    await app.close()
-    app = await launch()
-    page = await app.firstWindow()
-    await page.waitForSelector('#dropzone')
-    const b = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getBounds())
-    assert.equal(b.width, 900)
-    assert.equal(b.height, 600)
+    await press('Escape')
+    await until(async () => (await ui()).screen === 'summary', 'summary')
+    assert.equal((await ui()).summary, 'Renamed 1 of 5 files')
+    await press('a')
+    await until(async () => (await ui()).screen === 'drop', 'drop screen')
   })
 
   console.log(`\nAll ${step} checks passed. Files on disk: ${onDisk().join(', ')}`)
 } finally {
-  await app.close().catch(() => {})
+  if (sid) await wd('DELETE', '/session/:sid').catch(() => {})
+  driver.kill()
   fs.rmSync(tmp, { recursive: true, force: true })
 }

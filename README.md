@@ -23,7 +23,7 @@ Drop PDFs or a folder, type a name, press <kbd>Shift</kbd>+<kbd>Enter</kbd>. The
 
 ## Download
 
-[Releases](https://github.com/PSum/pdf-rename/releases/latest): Windows `.exe`, macOS `.dmg` (arm64/x64), Linux `.AppImage`.
+[Releases](https://github.com/PSum/pdf-rename/releases/latest): Windows `.exe`, macOS `.dmg` (Apple Silicon/Intel), Linux `.deb`/`.AppImage`. Installers are about 5 MB (AppImage ~80 MB), because the app uses the system's web view instead of bundling a browser.
 
 The builds are unsigned. On Windows, go to *Properties* → *Unblock*. On macOS, right-click → *Open*.
 
@@ -42,11 +42,14 @@ The builds are unsigned. On Windows, go to *Properties* → *Unblock*. On macOS,
 
 ## Development
 
+Built with [Tauri](https://tauri.app): Rust (`src-tauri/`) for file access, TypeScript and pdf.js (`src/renderer/`) for the UI. Requires Node.js 22+ and [Rust](https://rustup.rs). Linux also needs `libwebkit2gtk-4.1-dev libxdo-dev libayatana-appindicator3-dev librsvg2-dev pkg-config`.
+
 ```bash
 npm install
 npm run dev          # run
-npm test             # unit tests
-npm run e2e          # end-to-end, after npm run build
+npm test             # TypeScript + Rust unit tests
+npm run build        # installers in src-tauri/target/release/bundle/
+npm run e2e          # end-to-end via tauri-driver (Linux), after: npm run tauri build -- --debug --no-bundle
 ```
 
 Release: `npm version minor && git push --follow-tags`. GitHub Actions builds and publishes the installers.

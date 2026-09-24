@@ -1,12 +1,9 @@
 import { cpSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { defineConfig, type Plugin } from 'vite'
-import { defineConfig as defineElectronConfig } from 'electron-vite'
-
-const shared = { resolve: { alias: { '@shared': resolve('src/shared') } } }
 
 // pdf.js loads fonts, cmaps, colour profiles and wasm decoders at runtime by URL.
-// Copy them from node_modules into the renderer's public folder.
+// Copy them from node_modules into the public folder.
 function copyPdfjsAssets(): Plugin {
   return {
     name: 'copy-pdfjs-assets',
@@ -20,8 +17,11 @@ function copyPdfjsAssets(): Plugin {
   }
 }
 
-export default defineElectronConfig({
-  main: shared,
-  preload: shared,
-  renderer: defineConfig({ ...shared, plugins: [copyPdfjsAssets()] })
+export default defineConfig({
+  root: 'src/renderer',
+  resolve: { alias: { '@shared': resolve('src/shared') } },
+  plugins: [copyPdfjsAssets()],
+  clearScreen: false,
+  server: { port: 5173, strictPort: true },
+  build: { outDir: resolve('out'), emptyOutDir: true, target: 'es2022' }
 })
