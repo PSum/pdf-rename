@@ -1,7 +1,7 @@
 {
   "name": "pdf-rename",
   "productName": "PDF Rename",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Keyboard-driven batch PDF renamer",
   "author": "Philipp Sum <sum.philipp@gmail.com>",
   "license": "MIT",
