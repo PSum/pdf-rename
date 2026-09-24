@@ -11,7 +11,13 @@ export interface Preview {
   show(path: string | null): void
   /** Scroll by roughly one screen. */
   scroll(direction: 1 | -1): void
+  /** Zoom in (1), out (-1) or back to fit-width (0). Kept across files. */
+  zoom(step: 1 | -1 | 0): void
 }
+
+const ZOOM_STEP = 1.25
+const ZOOM_MIN = 0.5
+const ZOOM_MAX = 4
 
 /**
  * Scrollable pdf.js preview. Only the most recent `show()` ever paints: earlier
@@ -24,6 +30,8 @@ export function createPreview(
   let generation = 0
   let doc: PDFDocumentProxy | null = null
   let observer: IntersectionObserver | null = null
+  let zoomLevel = 1
+  let sharpenTimer: ReturnType<typeof setTimeout> | undefined
 
   function reset(): void {
     observer?.disconnect()
@@ -117,6 +125,21 @@ export function createPreview(
     },
     scroll(direction) {
       container.scrollBy({ top: direction * 0.9 * container.clientHeight, behavior: 'smooth' })
+    },
+    zoom(step) {
+      const next = step === 0 ? 1 : zoomLevel * ZOOM_STEP ** step
+      const level = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next))
+      if (level === zoomLevel) return
+      // Keep the same part of the document in view.
+      const y = container.scrollTop / (container.scrollHeight || 1)
+      zoomLevel = level
+      container.style.setProperty('--zoom', String(level))
+      container.scrollTop = y * container.scrollHeight
+      // Canvases stretch via CSS right away; re-render them sharp once zooming settles.
+      clearTimeout(sharpenTimer)
+      sharpenTimer = setTimeout(() => {
+        container.querySelectorAll('.page').forEach((page) => observer?.observe(page))
+      }, 150)
     }
   }
 }

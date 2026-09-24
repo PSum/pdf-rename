@@ -125,6 +125,12 @@ function perform(s: Session, action: Action): void | Promise<void> {
       return preview.scroll(-1)
     case 'pageDown':
       return preview.scroll(1)
+    case 'zoomIn':
+      return preview.zoom(1)
+    case 'zoomOut':
+      return preview.zoom(-1)
+    case 'zoomReset':
+      return preview.zoom(0)
     case 'escape':
       if (s.state.confirmingOverwrite) {
         s.cancelOverwrite()
@@ -156,6 +162,17 @@ input.addEventListener('input', () => {
   session?.edit(input.value)
   render()
 })
+
+// Ctrl/⌘+wheel zooms the preview, never the whole window.
+document.addEventListener(
+  'wheel',
+  (e) => {
+    if (!(e.ctrlKey || e.metaKey)) return
+    e.preventDefault()
+    if (session?.state.screen === 'rename') preview.zoom(e.deltaY < 0 ? 1 : -1)
+  },
+  { passive: false }
+)
 
 // ------------------------------------------------------------------- focus
 

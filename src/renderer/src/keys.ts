@@ -7,6 +7,9 @@ export type Action =
   | 'pageUp'
   | 'pageDown'
   | 'escape'
+  | 'zoomIn'
+  | 'zoomOut'
+  | 'zoomReset'
 
 type KeyLike = Pick<KeyboardEvent, 'key' | 'code' | 'shiftKey' | 'ctrlKey' | 'metaKey' | 'altKey' | 'isComposing'>
 
@@ -22,6 +25,9 @@ export function actionFor(e: KeyLike, mac: boolean): Action | null {
   const nav = e.altKey && !e.shiftKey && (mac ? e.metaKey && !e.ctrlKey : !e.ctrlKey && !e.metaKey)
   if (nav && e.key === 'ArrowRight') return 'skip'
   if (nav && e.key === 'ArrowLeft') return 'back'
+  if (mod && !e.altKey && (e.key === '+' || e.key === '=')) return 'zoomIn'
+  if (mod && !e.altKey && e.key === '-') return 'zoomOut'
+  if (mod && !e.altKey && e.key === '0') return 'zoomReset'
   if (e.key === 'PageUp') return 'pageUp'
   if (e.key === 'PageDown') return 'pageDown'
   return null

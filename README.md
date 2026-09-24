@@ -11,6 +11,7 @@ Drop PDFs (or a folder), type a new name, press **Shift+Enter**, next file. Runs
 | Alt+← (Mac: ⌘+⌥+←) | Go back to the previous file |
 | Ctrl/⌘+Alt/⌥+Z | Undo the last rename |
 | PageUp / PageDown | Scroll the preview |
+| Ctrl/⌘ + `+` / `-` / `0`, Ctrl/⌘+wheel | Zoom the preview in / out / back to page width |
 | Esc | Finish (or cancel the overwrite question) |
 
 The `.pdf` extension is added automatically. If the name already exists, the app asks: press Enter to overwrite or Esc to cancel.

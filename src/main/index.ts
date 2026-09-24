@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme, net, protocol, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, net, protocol, shell } from 'electron'
 import { join, normalize, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { createFileAccess } from './files'
@@ -40,6 +40,9 @@ function createWindow(): void {
     }
   })
 
+  // Zoom belongs to the PDF preview only, never to the whole window.
+  win.webContents.setVisualZoomLevelLimits(1, 1)
+
   // A file dropped outside the drop zone must not navigate the window away.
   win.webContents.on('will-navigate', (e) => e.preventDefault())
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -69,7 +72,18 @@ ipcMain.handle('open-dialog', async (e) => {
   return files.open(res.canceled ? [] : res.filePaths)
 })
 
+// No menu on Windows/Linux: its accelerators (Ctrl+R, Ctrl+Plus, …) would fight the
+// app's own shortcuts. macOS needs the Edit menu for copy/paste to work.
+function setMenu(): void {
+  Menu.setApplicationMenu(
+    process.platform === 'darwin'
+      ? Menu.buildFromTemplate([{ role: 'appMenu' }, { role: 'editMenu' }, { role: 'windowMenu' }])
+      : null
+  )
+}
+
 app.whenReady().then(() => {
+  setMenu()
   serveRenderer()
   createWindow()
   app.on('activate', () => {

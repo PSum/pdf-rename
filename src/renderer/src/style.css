@@ -106,18 +106,18 @@ body {
 #preview {
   flex: 1;
   min-width: 0;
-  overflow-y: auto;
+  overflow: auto;
   background: var(--preview-bg);
   padding: 16px;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  /* "safe" so pages wider than the view (zoomed in) stay scrollable to the left edge */
+  align-items: safe center;
   gap: 12px;
 }
 
 #preview .page {
-  width: 100%;
-  max-width: 1000px;
+  width: calc(var(--zoom, 1) * min(100%, 1000px));
   background: #fff;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
   flex-shrink: 0;

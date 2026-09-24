@@ -16,6 +16,11 @@ describe('actionFor', () => {
     expect(actionFor(key('ArrowLeft', { metaKey: true, altKey: true }), true)).toBe('back')
     expect(actionFor(key('Ω', { metaKey: true, altKey: true }, 'KeyZ'), true)).toBe('undo')
     expect(actionFor(key('Escape'), false)).toBe('escape')
+    expect(actionFor(key('+', { ctrlKey: true }), false)).toBe('zoomIn')
+    expect(actionFor(key('=', { metaKey: true }), true)).toBe('zoomIn')
+    expect(actionFor(key('-', { ctrlKey: true }), false)).toBe('zoomOut')
+    expect(actionFor(key('0', { ctrlKey: true }), false)).toBe('zoomReset')
+    expect(actionFor(key('0'), false)).toBeNull()
   })
   it('uses Cmd on mac and Ctrl elsewhere', () => {
     expect(actionFor(key('ArrowRight', { altKey: true }), true)).toBeNull() // ⌥+→ = word jump on mac
