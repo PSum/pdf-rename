@@ -1,0 +1,265 @@
+:root {
+  --bg: #f6f6f6;
+  --fg: #1d1d1f;
+  --muted: #6e6e73;
+  --panel: #ffffff;
+  --border: #d2d2d7;
+  --accent: #0a66d8;
+  --accent-soft: rgba(10, 102, 216, 0.08);
+  --error: #c62828;
+  --warn: #a15c00;
+  --ok: #2e7d32;
+  --preview-bg: #e4e4e7;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1e1e1e;
+    --fg: #ececec;
+    --muted: #9a9aa0;
+    --panel: #262626;
+    --border: #3d3d42;
+    --accent: #4c9bff;
+    --accent-soft: rgba(76, 155, 255, 0.1);
+    --error: #ff6b6b;
+    --warn: #ffb347;
+    --ok: #6fcf73;
+    --preview-bg: #141414;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, sans-serif;
+  overflow: hidden;
+  user-select: none;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.screen {
+  height: 100%;
+}
+
+.big {
+  font-size: 1.6rem;
+  font-weight: 600;
+}
+
+.small {
+  font-size: 0.95rem;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+/* Drop screen */
+#drop {
+  padding: 24px;
+}
+
+#dropzone {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 3px dashed var(--border);
+  border-radius: 16px;
+  cursor: pointer;
+  outline: none;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+#dropzone:hover,
+#dropzone:focus-visible,
+#dropzone.over {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Rename screen */
+#rename {
+  display: flex;
+}
+
+#preview {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  background: var(--preview-bg);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+#preview .page {
+  width: 100%;
+  max-width: 1000px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  flex-shrink: 0;
+}
+
+#preview canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#preview .preview-msg {
+  margin: auto;
+  color: var(--muted);
+  text-align: center;
+  white-space: pre-line;
+}
+
+#panel {
+  width: 360px;
+  flex-shrink: 0;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.current {
+  font-size: 1rem;
+  word-break: break-all;
+  margin-bottom: 28px;
+  user-select: text;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 0 10px;
+}
+
+.field.invalid {
+  border-color: var(--error);
+}
+
+.field input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 1.05rem;
+  padding: 10px 0;
+}
+
+.ext {
+  color: var(--muted);
+  padding-left: 2px;
+}
+
+.msg {
+  min-height: 3em;
+  margin-top: 8px;
+  margin-bottom: 8px;
+  white-space: pre-line;
+  font-size: 0.9rem;
+}
+
+.msg.error {
+  color: var(--error);
+}
+
+.msg.warn {
+  color: var(--warn);
+}
+
+.msg.ok {
+  color: var(--ok);
+}
+
+.counter {
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+
+.keys {
+  margin: auto 0 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.keys dt {
+  white-space: nowrap;
+}
+
+.keys dd {
+  margin: 0;
+}
+
+kbd {
+  font: inherit;
+  font-size: 0.75rem;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 0 4px;
+}
+
+/* Summary screen */
+#summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.summary-box {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.summary-box .hint {
+  margin-top: 24px;
+}
+
+@media (max-width: 800px) {
+  #panel {
+    width: 280px;
+  }
+}

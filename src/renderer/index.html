@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>PDF Rename</title>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; worker-src 'self' blob:; connect-src 'self'"
+    />
+  </head>
+  <body>
+    <main id="drop" class="screen">
+      <div id="dropzone" tabindex="0" role="button">
+        <div class="big">Drop PDFs or a folder here</div>
+        <div class="small">or click to choose files</div>
+        <div id="drop-msg" class="small muted"></div>
+      </div>
+    </main>
+
+    <main id="rename" class="screen" hidden>
+      <section id="preview" aria-label="PDF preview"></section>
+      <aside id="panel">
+        <label class="label">Current name</label>
+        <div id="current" class="current"></div>
+
+        <label class="label" for="name">New name</label>
+        <div class="field">
+          <input id="name" type="text" spellcheck="false" autocomplete="off" />
+          <span class="ext">.pdf</span>
+        </div>
+        <div id="msg" class="msg" aria-live="polite"></div>
+
+        <div id="counter" class="counter"></div>
+
+        <dl class="keys">
+          <dt><kbd>Shift</kbd>/<kbd class="mod"></kbd>+<kbd>Enter</kbd></dt><dd>Rename &amp; next</dd>
+          <dt><kbd class="nav"></kbd>+<kbd>→</kbd></dt><dd>Skip</dd>
+          <dt><kbd class="nav"></kbd>+<kbd>←</kbd></dt><dd>Back</dd>
+          <dt><kbd class="mod"></kbd>+<kbd class="alt"></kbd>+<kbd>Z</kbd></dt><dd>Undo rename</dd>
+          <dt><kbd>PgUp</kbd>/<kbd>PgDn</kbd></dt><dd>Scroll preview</dd>
+          <dt><kbd>Esc</kbd></dt><dd>Finish</dd>
+        </dl>
+      </aside>
+    </main>
+
+    <main id="summary" class="screen" hidden>
+      <div class="summary-box">
+        <div id="summary-text" class="big"></div>
+        <div id="summary-detail" class="small muted"></div>
+        <div class="small muted hint">Press any key to continue</div>
+      </div>
+    </main>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
