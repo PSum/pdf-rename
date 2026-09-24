@@ -26,6 +26,8 @@ mac:
   identity: '-'
   # Hardened runtime would reject Electron's own (differently signed) frameworks.
   hardenedRuntime: false
+dmg:
+  artifactName: ${productName}-${version}-${arch}.${ext}
 linux:
   target: AppImage
   category: Utility
