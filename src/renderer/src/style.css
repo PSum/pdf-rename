@@ -88,12 +88,17 @@ body {
 
 #dropzone:hover,
 #dropzone:focus-visible,
-#dropzone.over {
+.dragging #dropzone {
   border-color: var(--accent);
   background: var(--accent-soft);
 }
 
 /* Rename screen */
+.dragging #rename {
+  outline: 3px dashed var(--accent);
+  outline-offset: -3px;
+}
+
 #rename {
   display: flex;
 }

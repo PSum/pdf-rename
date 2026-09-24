@@ -115,4 +115,15 @@ describe('Session', () => {
     await first
     expect(s.state).toMatchObject({ file: '/d/b.pdf', position: 1 })
   })
+
+  it('appends dropped files, skipping ones already in the batch', async () => {
+    const { s } = setup(['a', 'b'])
+    await s.submit('A') // a.pdf is now A.pdf
+    expect(s.add(['/d/a.pdf', '/d/A.pdf', '/d/b.pdf', '/d/c.pdf'])).toBe(1)
+    expect(s.state).toMatchObject({ total: 3, position: 1, notice: { kind: 'ok', text: '1 PDF(s) added, 3 already in the list' } })
+    s.next()
+    expect(s.state.file).toBe('/d/c.pdf')
+    expect(s.add(['/d/c.pdf']).valueOf()).toBe(0)
+    expect(s.state.notice?.kind).toBe('warn')
+  })
 })

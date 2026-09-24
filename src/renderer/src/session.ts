@@ -67,6 +67,17 @@ export class Session {
     }
   }
 
+  /** Append more files to the end of the batch, skipping ones already in it. Returns how many were added. */
+  add(files: string[]): number {
+    const known = new Set(this.items.flatMap((i) => [i.original, i.path]))
+    const fresh = files.filter((f) => !known.has(f))
+    fresh.forEach((f) => this.items.push({ original: f, path: f }))
+    const dupes = files.length - fresh.length
+    const text = `${fresh.length} PDF(s) added` + (dupes ? `, ${dupes} already in the list` : '')
+    this.notice = { kind: fresh.length ? 'ok' : 'warn', text }
+    return fresh.length
+  }
+
   /** The user changed the new-name text: re-validate and drop any pending confirmation. */
   edit(input: string): void {
     this.conflict = null

@@ -79,19 +79,26 @@ dropzone.addEventListener('keydown', async (e) => {
 })
 
 // Always prevent the default so a stray drop never navigates the window.
+// While renaming, dropped PDFs are appended to the batch; otherwise they start a new one.
 document.addEventListener('dragover', (e) => {
   e.preventDefault()
-  if (!session) dropzone.classList.add('over')
+  document.body.classList.add('dragging')
 })
 document.addEventListener('dragleave', (e) => {
-  if (!e.relatedTarget) dropzone.classList.remove('over')
+  if (!e.relatedTarget) document.body.classList.remove('dragging')
 })
 document.addEventListener('drop', async (e) => {
   e.preventDefault()
-  dropzone.classList.remove('over')
-  if (session || !e.dataTransfer) return
+  document.body.classList.remove('dragging')
+  if (!e.dataTransfer) return
   const paths = [...e.dataTransfer.files].map((f) => window.api.pathForFile(f)).filter(Boolean)
-  start(await window.api.expandPaths(paths))
+  const result = await window.api.expandPaths(paths)
+  if (session?.state.screen === 'rename') {
+    session.add(result.files)
+    render()
+  } else {
+    start(result)
+  }
 })
 
 // ------------------------------------------------------------------ keyboard
