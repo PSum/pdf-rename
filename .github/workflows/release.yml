@@ -1,7 +1,8 @@
 name: Release
 
 # Push a tag like v0.2.0 (npm version minor && git push --follow-tags).
-# Each OS builds its installers and uploads them to a draft GitHub release.
+# Each OS builds its installers and uploads them to a draft GitHub release;
+# once all three succeeded, the draft is published.
 on:
   push:
     tags: ['v*']
@@ -26,5 +27,13 @@ jobs:
       - run: npm test
       - run: npx electron-vite build
       - run: npx electron-builder --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

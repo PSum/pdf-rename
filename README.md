@@ -91,7 +91,7 @@ npm version minor        # bumps the version in package.json, commits, tags v0.x
 git push --follow-tags
 ```
 
-The tag starts the *Release* workflow. It builds the Windows, macOS and Linux installers on GitHub's runners and attaches them to a **draft** release. Open the [Releases page](https://github.com/PSum/pdf-rename/releases), check the draft, and click *Publish release*.
+The tag starts the *Release* workflow. It builds the Windows, macOS and Linux installers on GitHub's runners and publishes them on the [Releases page](https://github.com/PSum/pdf-rename/releases). The release goes public only if all three builds succeed. Until then it stays a draft.
 
 Local builds go to `dist/`:
 
