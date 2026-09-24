@@ -2,6 +2,16 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, net, protocol, 
 import { join, normalize, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { createFileAccess } from './files'
+import { loadWindowState, trackWindowState } from './windowState'
+
+// Lets tests run against a throwaway profile instead of the user's.
+if (process.env.PDF_RENAME_USER_DATA) app.setPath('userData', process.env.PDF_RENAME_USER_DATA)
+
+// One window only: starting the app again brings the existing window to the front.
+if (!app.requestSingleInstanceLock()) {
+  app.quit()
+  process.exit(0)
+}
 
 const files = createFileAccess()
 
@@ -24,9 +34,12 @@ function serveRenderer(): void {
 }
 
 function createWindow(): void {
+  const stateFile = join(app.getPath('userData'), 'window-state.json')
+  const state = loadWindowState(stateFile)
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
+    ...state.bounds,
     minWidth: 640,
     minHeight: 400,
     title: 'PDF Rename',
@@ -39,6 +52,9 @@ function createWindow(): void {
       nodeIntegration: false
     }
   })
+
+  if (state.maximized) win.maximize()
+  trackWindowState(win, stateFile)
 
   // Zoom belongs to the PDF preview only, never to the whole window.
   win.webContents.setVisualZoomLevelLimits(1, 1)
@@ -81,6 +97,13 @@ function setMenu(): void {
       : null
   )
 }
+
+app.on('second-instance', () => {
+  const win = BrowserWindow.getAllWindows()[0]
+  if (!win) return
+  if (win.isMinimized()) win.restore()
+  win.focus()
+})
 
 app.whenReady().then(() => {
   setMenu()
