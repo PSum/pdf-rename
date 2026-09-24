@@ -4,6 +4,7 @@ import type { ExpandResult } from '@shared/types'
 import { actionFor, type Action } from './keys'
 import { createPreview } from './preview'
 import { Session } from './session'
+import logoUrl from '../../../build/icon.svg?url'
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T
 
@@ -13,6 +14,8 @@ const input = $<HTMLInputElement>('name')
 const field = input.parentElement!
 const msg = $('msg')
 const preview = createPreview($('preview'), window.api.readFile)
+
+$<HTMLImageElement>('logo').src = logoUrl
 
 const mac = window.api.platform === 'darwin'
 document.querySelectorAll('kbd.mod').forEach((k) => (k.textContent = mac ? '⌘' : 'Ctrl'))

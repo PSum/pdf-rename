@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>PDF Rename</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F0564A"/>
+      <stop offset="1" stop-color="#B42318"/>
+    </linearGradient>
+    <linearGradient id="fold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFE1DC"/>
+      <stop offset="1" stop-color="#F6B5AC"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-40%" width="160%" height="200%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#5A0E07" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- app tile, inset so it sits well next to other macOS/Windows icons -->
+  <rect x="64" y="64" width="896" height="896" rx="200" fill="url(#bg)"/>
+
+  <!-- the PDF page with a folded corner -->
+  <g filter="url(#shadow)">
+    <path d="M300 196 H604 L724 316 V828 Q724 852 700 852 H300 Q276 852 276 828 V220 Q276 196 300 196 Z" fill="#FFFFFF"/>
+    <path d="M604 196 V292 Q604 316 628 316 H724 Z" fill="url(#fold)"/>
+  </g>
+
+  <!-- text lines on the page -->
+  <rect x="340" y="276" width="196" height="30" rx="15" fill="#F3C4BD"/>
+  <rect x="340" y="348" width="320" height="26" rx="13" fill="#F1E4E2"/>
+  <rect x="340" y="404" width="284" height="26" rx="13" fill="#F1E4E2"/>
+  <rect x="340" y="760" width="236" height="26" rx="13" fill="#F1E4E2"/>
+
+  <!-- the new-name field, overlapping the page -->
+  <g filter="url(#shadow)">
+    <rect x="196" y="508" width="632" height="176" rx="44" fill="#1E1B22"/>
+  </g>
+  <rect x="252" y="578" width="312" height="36" rx="18" fill="#FFFFFF"/>
+  <!-- blinking-caret I-beam -->
+  <rect x="600" y="552" width="22" height="88" rx="11" fill="#FFC53D"/>
+  <!-- ".pdf" hint: small muted pill -->
+  <rect x="660" y="582" width="112" height="28" rx="14" fill="#5B5563"/>
+</svg>

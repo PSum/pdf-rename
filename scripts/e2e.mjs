@@ -7,6 +7,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import assert from 'node:assert/strict'
+import { labelPdf as pdf } from './sample-pdf.mjs'
 
 const APP = path.resolve(import.meta.dirname, '..')
 const ELECTRON = (await import('electron')).default // path to the binary
@@ -18,27 +19,6 @@ const env = { ...process.env, PDF_RENAME_USER_DATA: userData }
 fs.mkdirSync(dir)
 fs.mkdirSync(more)
 
-/** Minimal valid one-page PDF showing `text`. */
-function pdf(text) {
-  const stream = `BT /F1 36 Tf 60 700 Td (${text}) Tj ET`
-  const objs = [
-    '<< /Type /Catalog /Pages 2 0 R >>',
-    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>',
-    `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
-    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'
-  ]
-  let out = '%PDF-1.4\n'
-  const offsets = objs.map((o, i) => {
-    const at = out.length
-    out += `${i + 1} 0 obj\n${o}\nendobj\n`
-    return at
-  })
-  const xref = out.length
-  out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n`
-  out += offsets.map((o) => `${String(o).padStart(10, '0')} 00000 n \n`).join('')
-  return out + `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`
-}
 for (const n of ['scan10', 'scan2', 'scan1', 'taken']) fs.writeFileSync(path.join(dir, `${n}.pdf`), pdf(n))
 fs.writeFileSync(path.join(dir, 'notes.txt'), 'not a pdf')
 fs.writeFileSync(path.join(more, 'extra.pdf'), pdf('extra'))

@@ -93,6 +93,11 @@ body {
   background: var(--accent-soft);
 }
 
+.logo {
+  margin-bottom: 12px;
+  pointer-events: none;
+}
+
 /* Rename screen */
 .dragging #rename {
   outline: 3px dashed var(--accent);
