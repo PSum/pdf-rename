@@ -3,6 +3,7 @@ import { join, normalize, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { createFileAccess } from './files'
 import { loadWindowState, trackWindowState } from './windowState'
+import icon from '../../build/icon.png?asset'
 
 // Lets tests run against a throwaway profile instead of the user's.
 if (process.env.PDF_RENAME_USER_DATA) app.setPath('userData', process.env.PDF_RENAME_USER_DATA)
@@ -43,6 +44,8 @@ function createWindow(): void {
     minWidth: 640,
     minHeight: 400,
     title: 'PDF Rename',
+    // Windows/macOS take the icon from the packaged app; Linux and `npm run dev` need it here.
+    icon,
     autoHideMenuBar: true,
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#1e1e1e' : '#f6f6f6',
     webPreferences: {
