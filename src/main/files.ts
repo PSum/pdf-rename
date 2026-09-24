@@ -28,7 +28,11 @@ export function createFileAccess(): FileAccess {
     },
     async read(path) {
       check(path)
-      return new Uint8Array(await fs.readFile(path))
+      try {
+        return new Uint8Array(await fs.readFile(path))
+      } catch (e) {
+        throw new Error(describeFsError(e, basename(path)))
+      }
     },
     async rename(from, newBase, overwrite) {
       check(from)
@@ -69,6 +73,26 @@ async function expandPaths(paths: string[]): Promise<ExpandResult> {
     (a, b) => naturalCompare(basename(a), basename(b)) || naturalCompare(a, b)
   )
   return { files, ignored }
+}
+
+/** Turns Node's error codes into something a user can act on. */
+export function describeFsError(err: unknown, fileName: string): string {
+  switch ((err as NodeJS.ErrnoException).code) {
+    case 'EBUSY':
+    case 'EPERM':
+    case 'EACCES':
+      return `${fileName} is open in another program or you don't have permission. Close it and try again.`
+    case 'ENOENT':
+      return `${fileName} no longer exists`
+    case 'ENAMETOOLONG':
+      return 'Name is too long for this folder'
+    case 'ENOSPC':
+      return 'The disk is full'
+    case 'EROFS':
+      return 'This folder is read-only'
+    default:
+      return (err as Error).message
+  }
 }
 
 async function exists(p: string): Promise<boolean> {
@@ -118,6 +142,11 @@ async function renameFile(
     await fs.rename(from, target)
     return { ok: true, path: target }
   } catch (e) {
-    return { ok: false, reason: 'error', message: (e as Error).message }
+    const code = (e as NodeJS.ErrnoException).code
+    return {
+      ok: false,
+      reason: code === 'ENOENT' ? 'missing' : 'error',
+      message: describeFsError(e, basename(from))
+    }
   }
 }

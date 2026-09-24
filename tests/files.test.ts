@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { createFileAccess, type FileAccess } from '../src/main/files'
+import { createFileAccess, describeFsError, type FileAccess } from '../src/main/files'
 
 let dir: string
 let files: FileAccess
@@ -92,5 +92,30 @@ describe('rename', () => {
     expect(await files.rename(p('renamed.pdf'), 'orig', false)).toMatchObject({ reason: 'exists' })
     await fs.rm(p('orig.pdf'))
     expect(await files.rename(p('renamed.pdf'), 'orig', false)).toEqual({ ok: true, path: p('orig.pdf') })
+  })
+})
+
+describe('error messages', () => {
+  it.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
+    'explains a rename blocked by permissions',
+    async () => {
+      await touch('locked.pdf')
+      await files.open([dir])
+      await fs.chmod(dir, 0o555)
+      try {
+        const res = await files.rename(p('locked.pdf'), 'x', false)
+        expect(res).toMatchObject({ ok: false, reason: 'error' })
+        expect(res.ok || res.message).toMatch(/open in another program or you don't have permission/)
+      } finally {
+        await fs.chmod(dir, 0o755)
+      }
+    }
+  )
+
+  it('maps common error codes and falls back to the original message', () => {
+    const err = (code: string) => Object.assign(new Error(`raw ${code}`), { code })
+    expect(describeFsError(err('EBUSY'), 'a.pdf')).toMatch(/^a.pdf is open in another program/)
+    expect(describeFsError(err('ENAMETOOLONG'), 'a.pdf')).toMatch(/too long/)
+    expect(describeFsError(err('EXDEV'), 'a.pdf')).toBe('raw EXDEV')
   })
 })
